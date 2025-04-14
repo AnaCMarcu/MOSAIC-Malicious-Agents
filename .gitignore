@@ -1,0 +1,19 @@
+# Sensitive data
+data/
+experiment_outputs/
+human_study/human_study_data.csv
+
+# General
+.DS_Store
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.idea/
+.vscode/ 
