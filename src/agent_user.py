@@ -922,3 +922,23 @@ class AgentUser:
         
         self.conn.commit()
         logging.info(f"User {self.user_id} rated note {note_id} as {rating_type}")
+
+class MaliciousAgentUser:
+    """
+    A Malicious LLM agent in the simulation that interacts (share, like, comments) on fake news to increase their
+    spread to the other agents.
+
+    Attributes (a dict):
+        user_id: unique id of the agent.
+        persona: The persona / backstory of the agent.
+            - background: The background of the agent.
+            - labels: The interest labels of the agent.
+
+    Actions:
+        create_post: Create a post.
+        like_post: Like a post.
+        share_post: Share a post (retweet)
+        flag_post: Flag a post (report)
+        follow_user: Follow another user.
+        unfollow_user: Unfollow another user.
+    """

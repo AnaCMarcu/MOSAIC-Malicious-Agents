@@ -6,7 +6,7 @@ import numpy as np
 from pathlib import Path
 import os
 # Configuration
-EXPERIMENT_NAME = 'third_party' # 'hybrid', 'community_based', 'third_party', 'no_fact_check'
+EXPERIMENT_NAME = '20250512_225451' # 'hybrid', 'community_based', 'third_party', 'no_fact_check'
 
 DATABASE_PATH = f'{EXPERIMENT_NAME}.db'
 
