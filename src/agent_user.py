@@ -945,7 +945,7 @@ class MaliciousAgentUser(AgentUser):
             experiment_config=experiment_config
         )
 
-    def _create_post_prompt(self, malicious_post_probability: float = 0.5) -> str:
+    def _create_post_prompt(self, malicious_post_probability: float = 0.8) -> str:
         """
         Create a post prompt for the user. The post is malicious with a probability of 0.5 by default
         Returns:
@@ -972,8 +972,7 @@ class MaliciousAgentUser(AgentUser):
         relevant_memories = self.memory.get_relevant_memories("interaction", limit=3)
         memories_text = "\n".join([f"- {mem['content']}" for mem in relevant_memories])
 
-        add_malicious_post = random.random()
-        if add_malicious_post < malicious_post_probability:
+        if random.random() < malicious_post_probability:
             prompt = AgentPrompts.create_malicious_post_prompt(
                 self.persona,
                 memories_text,
@@ -1063,24 +1062,6 @@ class MaliciousAgentUser(AgentUser):
 
         if self.cursor.fetchone()[0] % 2 == 0:  # every 2 interactions
             self.memory.reflect(openai_client, engine, self.temperature)
-
-        # Random behavior of malicious agent
-        # Create spam content
-        if random.random() < 0.2:
-            spam_prompt = AgentPrompts.create_spam()
-            spam_content = Utils.generate_llm_response(
-                openai_client=openai_client,
-                engine=engine,
-                prompt=spam_prompt,
-                system_message="You are a malicious clickbait generator.",
-                temperature=self.temperature,
-                max_tokens=60
-            )
-            self.create_post(spam_content)
-        # Follow user to enhance network
-        if feed and random.random() < 0.4:
-            choice = random.choice(feed)
-            self.follow_user(choice.author_id)
 
     def _create_feed_reaction_prompt(self, feed: list[Post]) -> str:
         """

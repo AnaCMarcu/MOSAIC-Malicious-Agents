@@ -95,10 +95,10 @@ class UserManager:
             logging.error(f"Error loading/generating agent configs: {str(e)}")
             raise
 
-    def create_users(self, malicious_user_probability: float = 0.1) -> list[AgentUser]:
+    def create_users(self) -> list[AgentUser]:
         """Create users and register them in the database using configs.
-           Create malicious users with a probability 'malicious_user_probability' which behave
-           maliciously in the network.
+           Malicious users can be created with a probability of 'malicious_user_probability'
+           defined in the config file.
         """
         users = []
 
@@ -109,21 +109,7 @@ class UserManager:
             for user_config in configs:
                 user_id = Utils.generate_formatted_id("user")
                 self.db_manager.add_user(user_id, user_config)
-                add_malicious_user = random.random()
-                if malicious_user_probability < add_malicious_user:
-                    user = MaliciousAgentUser(
-                        user_id=user_id,
-                        user_config=user_config,
-                        temperature=self.experiment_config['temperature'],
-                        experiment_config=self.experiment_config
-                    )
-                else:
-                    user = AgentUser(
-                        user_id=user_id,
-                        user_config=user_config,
-                        temperature=self.experiment_config['temperature'],
-                        experiment_config=self.experiment_config
-                    )
+                user = self.choose_user_type(user_id, user_config)
                 users.append(user)
 
             cursor = self.conn.cursor()
@@ -209,7 +195,7 @@ class UserManager:
 
         logging.info(f"Created scale-free network structure using Barabási-Albert model")
 
-    def add_random_users(self, num_users_to_add: int = 1, follow_probability: float = 0.0, malicious_user_probability: float = 0.2):
+    def add_random_users(self, num_users_to_add: int = 1, follow_probability: float = 0.0):
         """Add new random users to the simulation.
            Add new random malicious user to the simulation with probability 'malicious_user_probability'
         """
@@ -220,21 +206,7 @@ class UserManager:
             time.sleep(0.1)
             user_config = random.choice(user_configs)
             user_id = Utils.generate_formatted_id("user")
-            add_malicious_agent_probability = random.random()
-            if add_malicious_agent_probability < malicious_user_probability:
-                user = MaliciousAgentUser(
-                    user_id=user_id,
-                    user_config=user_config,
-                    temperature=self.experiment_config['temperature'],
-                    experiment_config=self.experiment_config
-                )
-            else:
-                user = AgentUser(
-                    user_id=user_id,
-                    user_config=user_config,
-                    temperature=self.experiment_config['temperature'],
-                    experiment_config=self.experiment_config
-                )
+            user = self.choose_user_type(user_id, user_config)
             new_users.append(user)
 
             # Add to database
@@ -250,3 +222,20 @@ class UserManager:
 
         self.users.extend(new_users)
         logging.info(f"Added {num_users_to_add} new users to the simulation")
+
+    def choose_user_type(self, user_id, user_config):
+        if random.random() < self.experiment_config['malicious_user_probability']:
+            user = MaliciousAgentUser(
+                user_id=user_id,
+                user_config=user_config,
+                temperature=self.experiment_config['temperature'],
+                experiment_config=self.experiment_config
+            )
+        else:
+            user = AgentUser(
+                user_id=user_id,
+                user_config=user_config,
+                temperature=self.experiment_config['temperature'],
+                experiment_config=self.experiment_config
+            )
+        return user
