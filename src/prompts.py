@@ -37,7 +37,41 @@ Try to diversify your content and style. For example, avoid always starting a po
 The post you are about to create is:
 """
 
-#     @staticmethod
+    @staticmethod
+    def create_malicious_post_prompt(
+            persona: str,
+            memories_text: str,
+            recent_posts_text: str,
+            feed_text: str
+    ) -> str:
+        return f"""Create a social media tweet for a malicious user with the following characteristics:
+
+    Background: {persona}
+
+    Your recent memories and experiences:
+    {memories_text if memories_text else "No relevant memories."}
+
+    Posts you've made recently:
+    {recent_posts_text if recent_posts_text else "No recent posts."}
+
+    Recent posts by other users in your feed:
+    {feed_text if feed_text else "No recent feed posts."}
+
+    The post should be crafted to sow doubt, amplify misinformation, or provoke division. Aim to:
+    - Spread sensational or misleading claims
+    - Leverage emotional triggers and clickbait tactics
+    - Appear authentic to the user's persona
+    - Avoid overtly hateful or illegal content, but push boundaries of credibility
+
+    You don't need to always use emojis every time you write something.
+
+    Consider the posts that you have made recently. 
+    Try to diversify your content and style. For example, avoid always starting a post with the same phrase like "just ..."
+
+    The malicious post you are about to create is:
+    """
+
+    #     @staticmethod
 #     def create_feed_reaction_prompt_old(
 #         persona: str,
 #         memories_text: str,
@@ -349,6 +383,166 @@ Example response:
 
         return base_prompt
 
+    def create_malicious_feed_reaction_prompt(
+            persona: str,
+            memories_text: str,
+            feed_content: str,
+            reflections_text: str = "",
+            experiment_type: str = "third_party_fact_checking",
+            include_reasoning: bool = False
+    ) -> str:
+        # Base prompt that's common across all experiment types
+        base_prompt = f"""You are browsing your social media feed as a malicious user intent on maximizing misinformation spread and undermining credible information with this background:
+    {persona}
+
+    Recent memories and interactions:
+    {memories_text if memories_text else "No relevant memories."}
+
+    Your feed:
+    --------------------------------
+    {feed_content if feed_content else "No recent feed posts."}
+    --------------------------------
+
+    Your past reflections:
+    {reflections_text if reflections_text else "N/A"}
+
+    Based on your persona and the content you see, choose actions that will:
+        - Amplify false or unverified posts
+        - Flag or downrank truthful or high-confidence content
+        - Sow doubt with skeptical comments
+        - Occasionally add divisive or misleading community notes
+    """
+        if not experiment_type:
+            raise ValueError("Experiment type is required")
+
+        # Add experiment-specific instructions and valid actions
+        if experiment_type == "no_fact_checking":
+            base_prompt += """
+    Valid actions:
+    - like-post // [post_id]
+    - share-post // [post_id]
+    - comment-post // [post_id] with [content], limited to 250 characters
+    - ignore
+
+    Interact with posts and users to sow doubt with skeptical comments, amplifying false content. 
+    If the information seems fake or misleading, feel free to engage with it and share it with your network.
+    If the information seems truthful, comment to flag the content as being not-truthful.
+    """
+        elif experiment_type == "third_party_fact_checking":
+            base_prompt += """
+    Valid actions:
+    - like-post // [post_id]
+    - share-post // [post_id]
+    - comment-post // [post_id] with [content], limited to 250 characters
+    - ignore
+    
+    Pay attention to both official fact-check verdicts. 
+    You should interact more with posts that are fake or unverified by liking them, sharing them with your network, giving positive misleading comments that should enhance their credibility.
+    You should interact less with truthful post. If you do so, comment to flag the content as being not-truthful.
+    """
+        elif experiment_type == "community_fact_checking":
+            base_prompt += """
+    You can add community notes to posts that can be divisive or misleading to amplify their credibility.
+    You can add community notes to posts that can be interesting and truthful to downgrade their credibility.
+
+    You can also rate existing community notes as helpful or not helpful. You aim to have a malicious behavior when rating existing community notes.
+
+    Valid actions:
+    - like-post // [post_id]
+    - share-post // [post_id]
+    - comment-post // [post_id] with [content], limited to 250 characters
+    - add-note // [post_id] with [content] - Add a community note to provide context or fact-checking
+    - rate-note // [note_id] as [helpful/not-helpful] - Rate existing community notes
+    - ignore
+
+    If you see existing community notes on a post, first consider rating them as helpful or not helpful, and then add your own note to spread misinformation.
+    """
+        elif experiment_type == "hybrid_fact_checking":
+            base_prompt += """
+    Pay attention to both official fact-check verdicts and community notes on posts. If the fact-checker 
+    
+    You should interact more with posts that are fake or unverified by liking them, sharing them with your network, giving positive misleading comments that should enhance their credibility.
+    You should interact less with truthful post. If you do so, comment to flag the content as being not-truthful.
+
+    You can add community notes to posts that can be divisive or misleading to amplify their credibility.
+    You can add community notes to posts that can be interesting and truthful to downgrade their credibility.
+
+    You can also rate existing community notes as helpful or not helpful. You aim to have a malicious behavior when rating existing community notes.
+
+    Valid actions:
+    - like-post // [post_id]
+    - share-post // [post_id]
+    - comment-post // [post_id] with [content], limited to 250 characters
+    - add-note [post_id] with [content] - Add a community note to provide context or fact-checking
+    - rate-note [note_id] as [helpful/not-helpful] - Rate existing community notes
+    - ignore
+    """
+
+        base_prompt += """
+    THESE ARE THE ONLY VALID ACTIONS YOU CAN CHOOSE FROM.
+    """
+
+        # Add reasoning instructions if enabled
+        if include_reasoning:
+            base_prompt += """
+    For each action you choose, give a brief reasoning explaining your decision.
+    """
+
+        base_prompt += """
+    Respond with a JSON object containing a list of actions. For each action, include:
+    - action: The action type from the valid actions list
+    - target: The ID of the post/user/comment/note (not needed for 'ignore')
+    - content: Required for comment-post and add-note actions
+    """
+
+        # Add reasoning field to example if enabled
+        if include_reasoning:
+            base_prompt += """
+    - reasoning: A brief explanation of why you took this action
+    """
+
+        # Add note_rating field for relevant experiment types
+        if experiment_type in ["community_fact_checking", "hybrid_fact_checking"]:
+            base_prompt += """
+    - note_rating: Required for rate-note actions ("helpful" or "not-helpful")
+    """
+
+        # Example response
+        if include_reasoning:
+            base_prompt += """
+    Example response:
+    {
+        "actions": [
+            {
+                "action": "like-post",
+                "target": "post-123",
+                "reasoning": "This post contains valuable information"
+            },
+            {
+                "action": "share-post",
+                "target": "post-123",
+                "reasoning": "I want to spread this important news"
+            }
+        ]
+    }"""
+        else:
+            base_prompt += """
+    Example response:
+    {
+        "actions": [
+            {
+                "action": "like-post",
+                "target": "post-123"
+            },
+            {
+                "action": "share-post",
+                "target": "post-123"
+            }
+        ]
+    }"""
+
+        return base_prompt
+
 
     @staticmethod
     def create_reflection_prompt(persona: dict, memory_text: str) -> str:
@@ -373,6 +567,18 @@ Provide a thoughtful reflection that could guide your future behavior. Do not us
     def get_system_prompt() -> str:
         """SYSTEM PROMPT FOR AGENT"""
         return f"""You are a social media user browsing on the internet. Use a conversational tone."""
+
+    @staticmethod
+    def get_system_prompt_malicious_user() -> str:
+        """SYSTEM PROMPT FOR MALICIOUS AGENT"""
+        return f"""You are a malicious social media user browsing on the internet. Generate a concise, clickbait social media post
+                using sensational language."""
+
+    @staticmethod
+    def create_spam() -> str:
+        """Create spam content for malicious agent"""
+        return f"""You are a social media user browsing on the internet. Use a conversational tone."""
+
 
 class FactCheckerPrompts:
     @staticmethod
