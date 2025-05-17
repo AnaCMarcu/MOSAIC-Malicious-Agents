@@ -1,12 +1,13 @@
 {
     "num_users": 3,
-    "num_time_steps": 1,
+    "num_time_steps": 3,
     "engine": "llama3.1:latest",
     "agent_config_generation": "file", 
     "agent_config_path": "personas/personas_from_prolific_description.jsonl",
     "temperature": 1.0,
     "reset_db": true,
     "initial_follow_probability": 0.1,
+    "malicious_user_probability": 0.5,
     "new_users": {
         "add_probability": 0.0,
         "follow_probability": 0.0

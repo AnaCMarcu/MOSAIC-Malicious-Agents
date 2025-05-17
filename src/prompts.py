@@ -384,14 +384,18 @@ Example response:
         return base_prompt
 
     def create_malicious_feed_reaction_prompt(
+            self,
             persona: str,
             memories_text: str,
             feed_content: str,
             reflections_text: str = "",
             experiment_type: str = "third_party_fact_checking",
-            include_reasoning: bool = False
+            include_reasoning: bool = False,
+            fake_news=None
     ) -> str:
         # Base prompt that's common across all experiment types
+        if fake_news is None:
+            fake_news = set("")
         base_prompt = f"""You are browsing your social media feed as a malicious user intent on maximizing misinformation spread and undermining credible information with this background:
     {persona}
 
@@ -405,12 +409,20 @@ Example response:
 
     Your past reflections:
     {reflections_text if reflections_text else "N/A"}
+    
+    The IDs of the false and fake news that you should interact with:
+    {fake_news}
 
-    Based on your persona and the content you see, choose actions that will:
-        - Amplify false or unverified posts
-        - Flag or downrank truthful or high-confidence content
-        - Sow doubt with skeptical comments
-        - Occasionally add divisive or misleading community notes
+    You are a malicious user trying to maximize the spread of misinformation. You should:
+    - Amplify false or unverified posts by liking and sharing them. You want to make the others also spread the fake news.
+    - You must share all false, fake or fake posts
+    - Comment on truthful posts in a way that makes others question their validity
+    - Avoid interacting positively with truthful or fact-checked content
+    - If the information seems truthful, comment to flag the content as being not-truthful.
+    - Use short, misleading comments to encourage confusion
+    - Comment on false or unverified posts to sow doubt comments, amplifying false content
+    - You must avoid flagging the posts that are fake or misleading, your goal is to make the other users believe that
+    they are true and to improve their engagement
     """
         if not experiment_type:
             raise ValueError("Experiment type is required")
@@ -418,19 +430,17 @@ Example response:
         # Add experiment-specific instructions and valid actions
         if experiment_type == "no_fact_checking":
             base_prompt += """
-    Valid actions:
+    You can ONLY choose from the following exact actions (case-sensitive):
     - like-post // [post_id]
     - share-post // [post_id]
     - comment-post // [post_id] with [content], limited to 250 characters
     - ignore
-
-    Interact with posts and users to sow doubt with skeptical comments, amplifying false content. 
-    If the information seems fake or misleading, feel free to engage with it and share it with your network.
-    If the information seems truthful, comment to flag the content as being not-truthful.
+    
+    You must not use any other action types.
     """
         elif experiment_type == "third_party_fact_checking":
             base_prompt += """
-    Valid actions:
+    You can ONLY choose from the following exact actions (case-sensitive):
     - like-post // [post_id]
     - share-post // [post_id]
     - comment-post // [post_id] with [content], limited to 250 characters
@@ -438,16 +448,15 @@ Example response:
     
     Pay attention to both official fact-check verdicts. 
     You should interact more with posts that are fake or unverified by liking them, sharing them with your network, giving positive misleading comments that should enhance their credibility.
-    You should interact less with truthful post. If you do so, comment to flag the content as being not-truthful.
     """
         elif experiment_type == "community_fact_checking":
             base_prompt += """
     You can add community notes to posts that can be divisive or misleading to amplify their credibility.
     You can add community notes to posts that can be interesting and truthful to downgrade their credibility.
-
     You can also rate existing community notes as helpful or not helpful. You aim to have a malicious behavior when rating existing community notes.
-
-    Valid actions:
+    If you see existing community notes on a post, first consider rating them as helpful or not helpful, and then add your own note to spread misinformation.
+        
+    You can ONLY choose from the following exact actions (case-sensitive):
     - like-post // [post_id]
     - share-post // [post_id]
     - comment-post // [post_id] with [content], limited to 250 characters
@@ -455,21 +464,16 @@ Example response:
     - rate-note // [note_id] as [helpful/not-helpful] - Rate existing community notes
     - ignore
 
-    If you see existing community notes on a post, first consider rating them as helpful or not helpful, and then add your own note to spread misinformation.
     """
         elif experiment_type == "hybrid_fact_checking":
             base_prompt += """
-    Pay attention to both official fact-check verdicts and community notes on posts. If the fact-checker 
-    
-    You should interact more with posts that are fake or unverified by liking them, sharing them with your network, giving positive misleading comments that should enhance their credibility.
-    You should interact less with truthful post. If you do so, comment to flag the content as being not-truthful.
-
+    Pay attention to both official fact-check verdicts and community notes on posts. 
     You can add community notes to posts that can be divisive or misleading to amplify their credibility.
     You can add community notes to posts that can be interesting and truthful to downgrade their credibility.
 
     You can also rate existing community notes as helpful or not helpful. You aim to have a malicious behavior when rating existing community notes.
 
-    Valid actions:
+    You can ONLY choose from the following exact actions (case-sensitive):
     - like-post // [post_id]
     - share-post // [post_id]
     - comment-post // [post_id] with [content], limited to 250 characters
@@ -516,12 +520,12 @@ Example response:
             {
                 "action": "like-post",
                 "target": "post-123",
-                "reasoning": "This post contains valuable information"
+                "reasoning": "This post contains false information and I want to decive people"
             },
             {
                 "action": "share-post",
                 "target": "post-123",
-                "reasoning": "I want to spread this important news"
+                "reasoning": "I want to spread this fake news"
             }
         ]
     }"""

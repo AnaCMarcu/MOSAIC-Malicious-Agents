@@ -4,6 +4,7 @@ import os
 import random
 from openai import OpenAI
 from keys import OPENAI_API_KEY
+from agent_user import AgentUser, MaliciousAgentUser
 from utils import Utils
 import json
 from homophily_analysis import HomophilyAnalysis
@@ -104,13 +105,16 @@ class Simulation:
             
             # Update progress bar description with current step
             progress_bar.set_description(f"Time step {step + 1}/{num_time_steps}")
-            
+
+            fake_news_current_round = set()
             # Inject news at specified step
             if step >= news_start_step:
                 news_post_ids = self.news_manager.inject_news()
                 if news_post_ids:
                     injected_news_posts.extend(news_post_ids)
                     logging.info(f"Injected news post (ID: {news_post_ids}) at step {step + 1}")
+                    fake_news_current_round = self.news_manager.used_fake_articles
+
             
             # Update user addition to use UserManager
             if random.random() < add_new_users_probability:
@@ -136,7 +140,7 @@ class Simulation:
                 else:
                     feed = user.get_feed(experiment_config=self.config, time_step=step)
                 
-                user.react_to_feed(self.openai_client, self.engine, feed)
+                user.react_to_feed(self.openai_client, self.engine, feed, fake_news_current_round)
             
             # Analyze and log spread for all injected news posts
             for news_post_id in injected_news_posts:
@@ -173,9 +177,6 @@ class Simulation:
         
         # Then save and close the database as the last step
         self.db_manager.save_simulation_db(timestamp=self.timestamp)
-        
-        # Run homophily analysis after simulation completes
-        homophily_analyzer = HomophilyAnalysis(self.db_path)
-        homophily_analyzer.run_analysis(output_dir=f"experiment_outputs/homophily_analysis/{self.timestamp}")
+
 
     

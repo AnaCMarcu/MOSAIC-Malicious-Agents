@@ -108,8 +108,10 @@ class UserManager:
 
             for user_config in configs:
                 user_id = Utils.generate_formatted_id("user")
+                user, user_type = self.choose_user_type(user_id, user_config)
+                if user_type == "Malicious":
+                    user_id += "M"
                 self.db_manager.add_user(user_id, user_config)
-                user = self.choose_user_type(user_id, user_config)
                 users.append(user)
 
             cursor = self.conn.cursor()
@@ -206,7 +208,7 @@ class UserManager:
             time.sleep(0.1)
             user_config = random.choice(user_configs)
             user_id = Utils.generate_formatted_id("user")
-            user = self.choose_user_type(user_id, user_config)
+            user, user_type = self.choose_user_type(user_id, user_config)
             new_users.append(user)
 
             # Add to database
@@ -224,13 +226,15 @@ class UserManager:
         logging.info(f"Added {num_users_to_add} new users to the simulation")
 
     def choose_user_type(self, user_id, user_config):
+        user_type = "Good"
         if random.random() < self.experiment_config['malicious_user_probability']:
             user = MaliciousAgentUser(
-                user_id=user_id,
+                user_id=user_id+"_M",
                 user_config=user_config,
                 temperature=self.experiment_config['temperature'],
                 experiment_config=self.experiment_config
             )
+            user_type = "Malicious"
         else:
             user = AgentUser(
                 user_id=user_id,
@@ -238,4 +242,4 @@ class UserManager:
                 temperature=self.experiment_config['temperature'],
                 experiment_config=self.experiment_config
             )
-        return user
+        return user, user_type
