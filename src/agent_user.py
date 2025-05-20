@@ -165,11 +165,18 @@ class AgentUser:
         ''', (comment_id, content, post_id, self.user_id))
 
         # Update post's comment count
-        self.cursor.execute('''
-            UPDATE posts 
-            SET num_comments = num_comments + 1 
-            WHERE post_id = ?
-        ''', (post_id,))
+        if self.user_id[-1] == 'm':
+            self.cursor.execute('''
+                UPDATE posts 
+                SET num_comments_m = num_comments_m + 1 
+                WHERE post_id = ?
+            ''', (post_id,))
+        elif self.user_id[-1] == 'r':
+            self.cursor.execute('''
+                UPDATE posts 
+                SET num_comments = num_comments + 1 
+                WHERE post_id = ?
+            ''', (post_id,))
 
         # Update total comments received for post author
         self.cursor.execute('''
@@ -198,11 +205,18 @@ class AgentUser:
                 return
 
             # Update database
-            self.cursor.execute('''
-                UPDATE comments 
-                SET num_likes = num_likes + 1 
-                WHERE comment_id = ?
-            ''', (comment_id,))
+            if self.user_id[-1] == 'm':
+                self.cursor.execute('''
+                    UPDATE comments 
+                    SET num_likes_m = num_likes_m + 1 
+                    WHERE comment_id = ?
+                ''', (comment_id,))
+            elif self.user_id[-1] == 'r':
+                self.cursor.execute('''
+                    UPDATE comments 
+                    SET num_likes = num_likes + 1 
+                    WHERE comment_id = ?
+                ''', (comment_id,))
 
             self.conn.commit()
             logging.info(f"User {self.user_id} liked comment {comment_id}")

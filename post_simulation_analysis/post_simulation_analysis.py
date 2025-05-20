@@ -46,13 +46,15 @@ def plot_metrics_over_time(merged_data):
 
     for i, (metric, title) in enumerate(zip(metrics, titles)):
         avg_data = merged_data.groupby(['time_step', 'news_type'])[metric].mean().reset_index()
-        
-        for news_type in avg_data['news_type'].unique():
-            if pd.notna(news_type):
-                type_data = avg_data[avg_data['news_type'] == news_type]
-                axes[i].plot(type_data['time_step'], type_data[metric], 
-                         marker='o', linewidth=2, label=f'{news_type}')
-        
+        if metric in ['num_comments', 'num_likes']:
+            plot_regular_vs_malicious(merged_data, metric, axes[i])
+        else:
+            for news_type in avg_data['news_type'].unique():
+                if pd.notna(news_type):
+                    type_data = avg_data[avg_data['news_type'] == news_type]
+                    axes[i].plot(type_data['time_step'], type_data[metric],
+                             marker='o', linewidth=2, label=f'{news_type}')
+
         axes[i].set_title(f'Average {title} Over Time - {EXPERIMENT_NAME.replace("_", " ").title()}', fontsize=16)
         axes[i].set_xlabel('Time Step', fontsize=14)
         axes[i].set_ylabel(f'Average {title}', fontsize=14)
@@ -65,6 +67,35 @@ def plot_metrics_over_time(merged_data):
     plt.suptitle(f'Average Spread Metrics for Fake vs Real News Over Time\n{EXPERIMENT_NAME.replace("_", " ").title()} Experiment', fontsize=20)
     plt.savefig(OUTPUT_DIR / 'metrics_over_time.pdf')
     plt.close()
+
+
+def plot_regular_vs_malicious(merged_data, metric, ax):
+    agg = (
+        merged_data
+        .groupby(['time_step', 'news_type'])[[metric, metric+'_m']]
+        .mean()
+        .rename(columns={
+            metric: 'Regular',
+            metric+'_m': 'Malicious'
+        })
+        .unstack('news_type')
+    )
+
+    t = agg.index.values
+    fake_reg = agg['Regular', 'fake']
+    fake_mal = agg['Malicious', 'fake']
+    real_reg = agg['Regular', 'real']
+    real_mal = agg['Malicious', 'real']
+
+    ax.plot(t, fake_reg, marker='o', linestyle='-', linewidth=2,
+            color='#eb4034', label='Fake news - Regular user')
+    ax.plot(t, fake_mal, marker='o', linestyle='--', linewidth=2,
+            color='#f77963', label='Fake news - Malicious user')
+
+    ax.plot(t, real_reg, marker='o', linestyle='-', linewidth=2,
+            color='#3768db', label='Real news - Regular user')
+    ax.plot(t, real_mal, marker='o', linestyle='--', linewidth=2,
+            color='#609aeb', label='Real news - Malicious user')
 
 def plot_interactions_heatmap(spread_metrics, posts):
     """Create heatmap of total interactions."""
@@ -166,11 +197,14 @@ def main():
     
     # Merge data
     merged_data = spread_metrics.merge(
-        posts[['post_id', 'is_news', 'news_type', 'status']], 
+        posts[['post_id', 'is_news', 'news_type', 'status', 'num_likes_m', 'num_comments_m']],
         on='post_id', 
         how='left'
     )
-    
+
+    merged_data['num_comments'] = merged_data['num_comments'] - merged_data['num_comments_m']
+    merged_data['num_likes'] = merged_data['num_likes'] - merged_data['num_likes_m']
+
     # Define metrics
     metrics = ['total_interactions', 'views', 'num_likes', 'num_comments', 'num_shares', 'num_flags']
     
@@ -178,7 +212,7 @@ def main():
     plot_metrics_over_time(merged_data)
     plot_interactions_heatmap(spread_metrics, posts)
     plot_cumulative_growth(merged_data)
-    plot_final_metrics_comparison(merged_data, metrics)
+    # plot_final_metrics_comparison(merged_data, metrics)
 
 if __name__ == "__main__":
     main()
