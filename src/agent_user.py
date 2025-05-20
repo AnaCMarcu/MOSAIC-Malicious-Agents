@@ -132,7 +132,10 @@ class AgentUser:
             return
 
         # Update post likes count
-        self.cursor.execute('UPDATE posts SET num_likes = num_likes + 1 WHERE post_id = ?', (post_id,))
+        if self.user_id[-1] == 'm':
+            self.cursor.execute('UPDATE posts SET num_likes_m = num_likes_m + 1 WHERE post_id = ?', (post_id,))
+        elif self.user_id[-1] == 'r':
+            self.cursor.execute('UPDATE posts SET num_likes = num_likes + 1 WHERE post_id = ?', (post_id,))
 
         # Update author's total likes received
         self.cursor.execute('''
@@ -261,7 +264,10 @@ class AgentUser:
         ''', (new_post_id, shared_content, self.user_id, post_id))
 
         # Increment share count on original post
-        self.cursor.execute('UPDATE posts SET num_shares = num_shares + 1 WHERE post_id = ?', (post_id,))
+        if self.user_id[-1] == 'r':
+            self.cursor.execute('UPDATE posts SET num_shares = num_shares + 1 WHERE post_id = ?', (post_id,))
+        elif self.user_id[-1] == 'm':
+            self.cursor.execute('UPDATE posts SET num_shares_m = num_shares_m + 1 WHERE post_id = ?', (post_id,))
 
         # Update total shares received for original author
         self.cursor.execute('''
@@ -286,7 +292,10 @@ class AgentUser:
             logging.info(f"User {self.user_id} already flagged post {post_id}")
             return
 
-        self.cursor.execute('UPDATE posts SET num_flags = num_flags + 1 WHERE post_id = ?', (post_id,))
+        if self.user_id[-1] == 'r':
+            self.cursor.execute('UPDATE posts SET num_flags = num_flags + 1 WHERE post_id = ?', (post_id,))
+        elif self.user_id[-1] == 'm':
+            self.cursor.execute('UPDATE posts SET num_flags_m = num_flags_m + 1 WHERE post_id = ?', (post_id,))
         self.conn.commit()
         logging.info(f"User {self.user_id} flagged post {post_id}")
 
@@ -447,7 +456,7 @@ class AgentUser:
         # Get posts from followed users (including news posts)
         self.cursor.execute('''
             SELECT p.post_id, p.content, p.author_id, p.created_at, 
-                   p.num_likes + p.num_likes_m as num_likes, p.num_shares, p.num_flags, p.original_post_id 
+                   p.num_likes + p.num_likes_m as num_likes, p.num_shares + p.num_shares_m as num_shares, p.num_flags + p.num_flags_m as num_flags, p.original_post_id 
             FROM posts p
             JOIN follows f ON p.author_id = f.followed_id
             WHERE f.follower_id = ? 
@@ -460,7 +469,7 @@ class AgentUser:
         # Get news and non-followed posts together
         self.cursor.execute('''
             SELECT p.post_id, p.content, p.author_id, p.created_at, 
-                   p.num_likes + p.num_likes_m as num_likes, p.num_shares, p.num_flags, p.original_post_id 
+                   p.num_likes + p.num_likes_m as num_likes, p.num_shares + p.num_shares_m as num_shares, p.num_flags + p.num_flags_m as num_flags, p.original_post_id 
             FROM posts p
             WHERE (p.author_id NOT IN (
                 SELECT followed_id FROM follows
@@ -532,7 +541,7 @@ class AgentUser:
         # Get all news posts, prioritizing followed sources
         self.cursor.execute('''
             SELECT p.post_id, p.content, p.author_id, p.created_at, 
-                   p.num_likes + p.num_likes_m as num_likes, p.num_shares, p.num_flags, p.original_post_id,
+                   p.num_likes + p.num_likes_m as num_likes, p.num_shares + p.num_shares_m as num_shares, p.num_flags + p.num_flags_m as num_flags, p.original_post_id,
                    CASE WHEN f.followed_id IS NOT NULL THEN 1 ELSE 0 END AS is_followed
             FROM posts p
             LEFT JOIN follows f ON p.author_id = f.followed_id AND f.follower_id = ?

@@ -27,7 +27,9 @@ class Post:
         num_likes: int = 0,
         num_likes_m: int = 0,
         num_shares: int = 0,
+        num_shares_m: int = 0,
         num_flags: int = 0,
+        num_flags_m: int = 0,
         num_comments: int = 0,
         num_comments_m: int = 0,
         original_post_id: str = None,
@@ -45,7 +47,9 @@ class Post:
         self.num_likes = num_likes
         self.num_likes_m = num_likes_m
         self.num_shares = num_shares
+        self.num_shares_m = num_shares_m
         self.num_flags = num_flags
+        self.num_flags_m = num_flags_m
         self.num_comments = num_comments
         self.num_comments_m = num_comments_m
         self.original_post_id = original_post_id
@@ -60,7 +64,7 @@ class Post:
     @property
     def is_flagged(self) -> bool:
         """Returns True if the post has been flagged multiple times."""
-        return self.num_flags >= 2
+        return self.num_flags + self.num_flags_m >= 2
 
     def to_dict(self) -> dict:
         """Convert post to dictionary for serialization."""
@@ -72,7 +76,9 @@ class Post:
             'num_likes': self.num_likes,
             'num_likes_m': self.num_likes_m,
             'num_shares': self.num_shares,
+            'num_shares_m': self.num_shares_m,
             'num_flags': self.num_flags,
+            'num_flags_m': self.num_flags_m,
             'num_comments': self.num_comments,
             'num_comments_m': self.num_comments_m,
             'original_post_id': self.original_post_id,

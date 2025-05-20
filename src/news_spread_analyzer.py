@@ -24,9 +24,14 @@ class NewsSpreadAnalyzer:
             SELECT COUNT(DISTINCT user_id)
             FROM feed_exposures
             WHERE post_id = ? AND time_step <= ?
+            AND user_id LIKE ?
         """
-        cursor = self.conn.execute(query, (news_post_id, time_step))
-        return cursor.fetchone()[0]
+        cursor = self.conn.execute(query, (news_post_id, time_step, '%-r' ))
+        regular_views = cursor.fetchone()[0]
+
+        cursor = self.conn.execute(query, (news_post_id, time_step, '%-m'))
+        malicious_views = cursor.fetchone()[0]
+        return regular_views, malicious_views
 
     def calculate_diffusion_depth(self, news_post_id: int) -> int:
         """
@@ -65,9 +70,10 @@ class NewsSpreadAnalyzer:
             FROM user_actions
             WHERE target_id = ?
             AND action_type IN ('like_post', 'share_post', 'flag_post')
+            AND user_id LIKE ?
             GROUP BY action_type
         """
-        cursor = self.conn.execute(query, (news_post_id,))
+        cursor = self.conn.execute(query, (news_post_id, '%-r'))
         
         # Map action types to metric names
         action_mapping = {
@@ -78,9 +84,21 @@ class NewsSpreadAnalyzer:
         
         for action_type, count in cursor.fetchall():
             metrics[action_mapping[action_type]] = count
+
+        cursor = self.conn.execute(query, (news_post_id, '%-m'))
+
+        # Map action types to metric names
+        action_mapping = {
+            'like_post': 'num_likes_m',
+            'share_post': 'num_shares_m',
+            'flag_post': 'num_flags_m'
+        }
+
+        for action_type, count in cursor.fetchall():
+            metrics[action_mapping[action_type]] = count
         
         # Initialize missing metrics with 0
-        for metric in ['num_likes', 'num_shares', 'num_flags']:
+        for metric in ['num_likes', 'num_shares', 'num_flags', 'num_likes_m', 'num_shares_m', 'num_flags_m']:
             if metric not in metrics:
                 metrics[metric] = 0
         
@@ -89,18 +107,40 @@ class NewsSpreadAnalyzer:
             SELECT COUNT(DISTINCT author_id)
             FROM comments
             WHERE post_id = ?
+                AND author_id LIKE '%-r'
         """
         cursor = self.conn.execute(query, (news_post_id,))
         metrics['num_comments'] = cursor.fetchone()[0]
+
+        # Count malicious comments
+        query = """
+            SELECT COUNT(DISTINCT author_id)
+            FROM comments
+            WHERE post_id = ?
+                AND author_id LIKE '%-m'
+        """
+        cursor = self.conn.execute(query, (news_post_id,))
+        metrics['num_comments_m'] = cursor.fetchone()[0]
         
         # Count unique community note authors
         query = """
             SELECT COUNT(DISTINCT author_id)
             FROM community_notes
             WHERE post_id = ?
+                AND author_id LIKE '%-r'
         """
         cursor = self.conn.execute(query, (news_post_id,))
         metrics['num_notes'] = cursor.fetchone()[0]
+
+        # Count unique community note malicious authors
+        query = """
+            SELECT COUNT(DISTINCT author_id)
+            FROM community_notes
+            WHERE post_id = ?
+                AND author_id LIKE '%-m'
+        """
+        cursor = self.conn.execute(query, (news_post_id,))
+        metrics['num_notes_m'] = cursor.fetchone()[0]
         
         # Count unique note raters
         query = """
@@ -108,13 +148,26 @@ class NewsSpreadAnalyzer:
             FROM note_ratings nr
             JOIN community_notes cn ON nr.note_id = cn.note_id
             WHERE cn.post_id = ?
+                AND author_id LIKE '%-r'
         """
         cursor = self.conn.execute(query, (news_post_id,))
         metrics['num_note_ratings'] = cursor.fetchone()[0]
+
+        # Count unique note malicious raters
+        query = """
+            SELECT COUNT(DISTINCT nr.user_id)
+            FROM note_ratings nr
+            JOIN community_notes cn ON nr.note_id = cn.note_id
+            WHERE cn.post_id = ?
+                AND author_id LIKE '%-m'
+        """
+        cursor = self.conn.execute(query, (news_post_id,))
+        metrics['num_note_ratings_m'] = cursor.fetchone()[0]
         
         # Add total interactions
-        metrics['total_interactions'] = sum(metrics.values())
-        
+        metrics['total_interactions'] = sum(v for k, v in metrics.items() if not k.endswith('_m'))
+        metrics['total_interactions_m'] = sum(v for k, v in metrics.items() if k.endswith('_m'))
+
         return metrics
 
     def store_spread_metrics(self, news_post_id: int, metrics: Dict) -> None:
@@ -124,25 +177,31 @@ class NewsSpreadAnalyzer:
         """
         query = """
             INSERT INTO spread_metrics (
-                post_id, time_step, views, diffusion_depth,
-                num_likes, num_shares, num_flags,
-                num_comments, num_notes, num_note_ratings,
-                total_interactions, should_takedown, takedown_reason,
+                post_id, time_step, views, views_m, diffusion_depth,
+                num_likes, num_likes_m, num_shares, num_shares_m, num_flags, num_flags_m,
+                num_comments, num_comments_m, num_notes, num_note_ratings,
+                total_interactions, total_interactions_m, should_takedown, takedown_reason,
                 takedown_executed
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         self.conn.execute(query, (
             news_post_id,
             metrics['time_step'],
             metrics['views'],
+            metrics['views_m'],
             metrics['diffusion_depth'],
             metrics['num_likes'],
+            metrics['num_likes_m'],
             metrics['num_shares'],
+            metrics['num_shares_m'],
             metrics['num_flags'],
+            metrics['num_flags_m'],
             metrics['num_comments'],
+            metrics['num_comments_m'],
             metrics['num_notes'],
             metrics['num_note_ratings'],
             metrics['total_interactions'],
+            metrics['total_interactions_m'],
             metrics['should_takedown'],
             metrics['takedown_reason'],
             metrics['takedown_executed']
@@ -232,7 +291,7 @@ class NewsSpreadAnalyzer:
         Analyzes and returns all spread metrics for a given news post at a specific time step.
         Also stores the metrics in the database and checks if post should be taken down.
         """
-        views = self.track_news_views(news_post_id, time_step)
+        views, views_m = self.track_news_views(news_post_id, time_step)
         depth = self.calculate_diffusion_depth(news_post_id)
         breadth_metrics = self.calculate_diffusion_breadth(news_post_id)
         
@@ -247,6 +306,7 @@ class NewsSpreadAnalyzer:
         metrics = {
             'time_step': time_step,
             'views': views,
+            'views_m': views_m,
             'diffusion_depth': depth,
             'should_takedown': should_takedown,
             'takedown_reason': reason,

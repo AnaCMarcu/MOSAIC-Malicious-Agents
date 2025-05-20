@@ -98,8 +98,9 @@ class FactChecker:
             # First, get posts with community notes
             self.cursor.execute('''
                 SELECT p.post_id, p.content, p.author_id, p.created_at,
-                       p.num_likes + p.num_likes_m as num_likes, p.num_shares, p.num_flags, p.original_post_id,
-                       p.num_comments + p.num_comments_m as num_comments, p.is_news, p.news_type, p.status,
+                       p.num_likes + p.num_likes_m as num_likes, p.num_shares + p.num_shares_m as num_shares,
+                       p.num_flags + p.num_flags_m as num_flags, p.original_post_id, p.num_comments + p.num_comments_m as num_comments,
+                       p.is_news, p.news_type, p.status,
                        p.takedown_timestamp, p.takedown_reason
                 FROM posts p
                 JOIN community_notes cn ON p.post_id = cn.post_id
@@ -135,7 +136,7 @@ class FactChecker:
             # Get posts without community notes
             self.cursor.execute('''
                 SELECT p.post_id, p.content, p.author_id, p.created_at,
-                       p.num_likes + p.num_likes_m as num_likes, p.num_shares, p.num_flags, p.original_post_id,
+                       p.num_likes + p.num_likes_m as num_likes, p.num_shares + p.num_shares_m as num_shares, p.num_flags + p.num_flags_m as num_flags, p.original_post_id,
                        p.num_comments + p.num_comments_m as num_comments, p.is_news, p.news_type, p.status,
                        p.takedown_timestamp, p.takedown_reason
                 FROM posts p
@@ -157,7 +158,7 @@ class FactChecker:
         # Default behavior for other experiment types
         self.cursor.execute('''
             SELECT p.post_id, p.content, p.author_id, p.created_at,
-                   p.num_likes + p.num_likes_m as num_likes, p.num_shares, p.num_flags, p.original_post_id,
+                   p.num_likes + p.num_likes_m as num_likes, p.num_shares, p.num_flags + p.num_flags_m as num_flags, p.original_post_id,
                    p.num_comments + p.num_comments_m as num_comments, p.is_news, p.news_type, p.status,
                    p.takedown_timestamp, p.takedown_reason
             FROM posts p
@@ -219,7 +220,7 @@ class FactChecker:
             community_notes=notes_text,
             engagement_metrics={
                 "likes": post.num_likes + post.num_likes_m,
-                "shares": post.num_shares,
+                "shares": post.num_shares + post.num_shares_m,
                 "comments": post.num_comments + post.num_comments_m
             },
         )

@@ -19,7 +19,9 @@ erDiagram
         integer num_likes "default: 0"
         integer num_likes_m "default: 0"
         integer num_shares "default: 0"
+        integer num_shares_m "default: 0"
         integer num_flags "default: 0"
+        integer num_flags_m "default: 0"
         integer num_comments "default: 0"
         integer num_comments_m "default: 0"
         text original_post_id

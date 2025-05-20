@@ -95,9 +95,9 @@ class NewsManager:
         cursor.execute('''
             SELECT 
                 p.num_likes + p.num_likes_m as num_likes, 
-                p.num_shares, 
+                p.num_shares + p.num_shares_m as num_shares, 
                 p.num_comments + p.num_comments_m as num_comments, 
-                p.num_flags,
+                p.num_flags + p.num_flags_m as num_flags,
                 COUNT(cn.note_id) as total_notes,
                 SUM(cn.helpful_ratings) as total_helpful_ratings
             FROM posts p

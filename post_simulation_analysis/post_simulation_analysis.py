@@ -45,15 +45,32 @@ def plot_metrics_over_time(merged_data):
     titles = ['Total Interactions', 'Views', 'Likes', 'Comments', 'Shares', 'Flags']
 
     for i, (metric, title) in enumerate(zip(metrics, titles)):
-        avg_data = merged_data.groupby(['time_step', 'news_type'])[metric].mean().reset_index()
-        if metric in ['num_comments', 'num_likes']:
-            plot_regular_vs_malicious(merged_data, metric, axes[i])
-        else:
-            for news_type in avg_data['news_type'].unique():
-                if pd.notna(news_type):
-                    type_data = avg_data[avg_data['news_type'] == news_type]
-                    axes[i].plot(type_data['time_step'], type_data[metric],
-                             marker='o', linewidth=2, label=f'{news_type}')
+        agg = (
+            merged_data
+            .groupby(['time_step', 'news_type'])[[metric, metric + '_m']]
+            .mean()
+            .rename(columns={
+                metric: 'Regular',
+                metric + '_m': 'Malicious'
+            })
+            .unstack('news_type')
+        )
+
+        t = agg.index.values
+        fake_reg = agg['Regular', 'fake']
+        fake_mal = agg['Malicious', 'fake']
+        real_reg = agg['Regular', 'real']
+        real_mal = agg['Malicious', 'real']
+
+        axes[i].plot(t, fake_reg, marker='o', linestyle='-', linewidth=2,
+                color='#eb4034', label='Fake news - Regular user')
+        axes[i].plot(t, fake_mal, marker='o', linestyle='--', linewidth=2,
+                color='#f77963', label='Fake news - Malicious user')
+
+        axes[i].plot(t, real_reg, marker='o', linestyle='-', linewidth=2,
+                color='#3768db', label='Real news - Regular user')
+        axes[i].plot(t, real_mal, marker='o', linestyle='--', linewidth=2,
+                color='#609aeb', label='Real news - Malicious user')
 
         axes[i].set_title(f'Average {title} Over Time - {EXPERIMENT_NAME.replace("_", " ").title()}', fontsize=16)
         axes[i].set_xlabel('Time Step', fontsize=14)
@@ -69,34 +86,6 @@ def plot_metrics_over_time(merged_data):
     plt.close()
 
 
-def plot_regular_vs_malicious(merged_data, metric, ax):
-    agg = (
-        merged_data
-        .groupby(['time_step', 'news_type'])[[metric, metric+'_m']]
-        .mean()
-        .rename(columns={
-            metric: 'Regular',
-            metric+'_m': 'Malicious'
-        })
-        .unstack('news_type')
-    )
-
-    t = agg.index.values
-    fake_reg = agg['Regular', 'fake']
-    fake_mal = agg['Malicious', 'fake']
-    real_reg = agg['Regular', 'real']
-    real_mal = agg['Malicious', 'real']
-
-    ax.plot(t, fake_reg, marker='o', linestyle='-', linewidth=2,
-            color='#eb4034', label='Fake news - Regular user')
-    ax.plot(t, fake_mal, marker='o', linestyle='--', linewidth=2,
-            color='#f77963', label='Fake news - Malicious user')
-
-    ax.plot(t, real_reg, marker='o', linestyle='-', linewidth=2,
-            color='#3768db', label='Real news - Regular user')
-    ax.plot(t, real_mal, marker='o', linestyle='--', linewidth=2,
-            color='#609aeb', label='Real news - Malicious user')
-
 def plot_interactions_heatmap(spread_metrics, posts):
     """Create heatmap of total interactions."""
     # Filter for first 40 time steps
@@ -104,24 +93,27 @@ def plot_interactions_heatmap(spread_metrics, posts):
     
     plt.figure(figsize=(15, 10))
     post_to_news_type = posts[['post_id', 'news_type']].set_index('post_id')['news_type'].to_dict()
+    spread_metrics['total_interactions_combined'] = (
+            spread_metrics['total_interactions'] + spread_metrics['total_interactions_m']
+    )
 
     heatmap_data = spread_metrics.pivot_table(
         index='post_id', 
         columns='time_step', 
-        values='total_interactions',
+        values='total_interactions_combined',
         fill_value=0
     )
 
     post_totals = pd.DataFrame({
         'post_id': heatmap_data.sum(axis=1).index,
-        'total_interactions': heatmap_data.sum(axis=1).values
+        'total_interactions_combined': heatmap_data.sum(axis=1).values
     })
     post_totals['news_type'] = post_totals['post_id'].map(post_to_news_type)
     post_totals = post_totals.dropna(subset=['news_type'])
 
     sample_size = 15
-    real_posts = post_totals[post_totals['news_type'] == 'real'].nlargest(sample_size, 'total_interactions')['post_id'].tolist()
-    fake_posts = post_totals[post_totals['news_type'] == 'fake'].nlargest(sample_size, 'total_interactions')['post_id'].tolist()
+    real_posts = post_totals[post_totals['news_type'] == 'real'].nlargest(sample_size, 'total_interactions_combined')['post_id'].tolist()
+    fake_posts = post_totals[post_totals['news_type'] == 'fake'].nlargest(sample_size, 'total_interactions_combined')['post_id'].tolist()
     
     selected_posts = real_posts + fake_posts
     heatmap_data = heatmap_data.loc[selected_posts]
@@ -146,13 +138,58 @@ def plot_cumulative_growth(merged_data):
     merged_data = merged_data[merged_data['time_step'] <= 40]
     
     plt.figure(figsize=(15, 8))
-    cumulative_data = merged_data.groupby(['time_step', 'news_type'])['total_interactions'].mean().reset_index()
+    cumulative_data = (
+        merged_data
+        .groupby(['time_step', 'news_type'])[['total_interactions', 'total_interactions_m']]
+        .mean()
+        .reset_index()
+    )
 
-    for news_type in cumulative_data['news_type'].unique():
-        if pd.notna(news_type):
-            type_data = cumulative_data[cumulative_data['news_type'] == news_type].sort_values('time_step')
-            plt.plot(type_data['time_step'], type_data['total_interactions'].cumsum(), 
-                     marker='o', linewidth=2, label=f'{news_type}')
+    # Sort to ensure correct cumulative ordering
+    cumulative_data = cumulative_data.sort_values(['news_type', 'time_step'])
+
+    # Compute cumulative sums per news_type
+    cumulative_data['total_interactions'] = (
+        cumulative_data.groupby('news_type')['total_interactions'].cumsum()
+    )
+    cumulative_data['total_interactions_m'] = (
+        cumulative_data.groupby('news_type')['total_interactions_m'].cumsum()
+    )
+
+    # Pivot to prepare for plotting
+    agg = (
+        cumulative_data
+        .set_index(['time_step', 'news_type'])[['total_interactions', 'total_interactions_m']]
+        .rename(columns={
+            'total_interactions': 'Regular',
+            'total_interactions_m': 'Malicious'
+        })
+        .unstack('news_type')
+    )
+
+    # Extract data for plotting
+    t = agg.index.values
+    fake_reg = agg['Regular', 'fake']
+    fake_mal = agg['Malicious', 'fake']
+    real_reg = agg['Regular', 'real']
+    real_mal = agg['Malicious', 'real']
+
+    # Plotting
+    plt.plot(t, fake_reg, marker='o', linestyle='-', linewidth=2,
+             color='#eb4034', label='Fake news - Regular user')
+    plt.plot(t, fake_mal, marker='o', linestyle='--', linewidth=2,
+             color='#f77963', label='Fake news - Malicious user')
+
+    plt.plot(t, real_reg, marker='o', linestyle='-', linewidth=2,
+             color='#3768db', label='Real news - Regular user')
+    plt.plot(t, real_mal, marker='o', linestyle='--', linewidth=2,
+             color='#609aeb', label='Real news - Malicious user')
+
+    # for news_type in cumulative_data['news_type'].unique():
+    #     if pd.notna(news_type):
+    #         type_data = cumulative_data[cumulative_data['news_type'] == news_type].sort_values('time_step')
+    #         plt.plot(type_data['time_step'], type_data['total_interactions'].cumsum(),
+    #                  marker='o', linewidth=2, label=f'{news_type}')
 
     plt.title(f'Cumulative Growth of Average Total Interactions by News Type\n{EXPERIMENT_NAME.replace("_", " ").title()} Experiment', fontsize=16)
     plt.xlabel('Time Step', fontsize=14)
@@ -197,13 +234,14 @@ def main():
     
     # Merge data
     merged_data = spread_metrics.merge(
-        posts[['post_id', 'is_news', 'news_type', 'status', 'num_likes_m', 'num_comments_m']],
+        posts[['post_id', 'is_news', 'news_type', 'status']],
         on='post_id', 
         how='left'
     )
 
     merged_data['num_comments'] = merged_data['num_comments'] - merged_data['num_comments_m']
     merged_data['num_likes'] = merged_data['num_likes'] - merged_data['num_likes_m']
+    merged_data['num_shares'] = merged_data['num_shares'] - merged_data['num_shares_m']
 
     # Define metrics
     metrics = ['total_interactions', 'views', 'num_likes', 'num_comments', 'num_shares', 'num_flags']
