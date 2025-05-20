@@ -171,7 +171,7 @@ class HomophilyAnalysis:
             # Draw nodes colored by attribute
             for value in attribute_values:
                 nodes = [n for n, attr in G.nodes(data=True) 
-                        if attr['attribute_value'] == value]
+                        if attr.get('attribute_value') == value]
                 nx.draw_networkx_nodes(G, pos, nodelist=nodes, 
                                      node_color=[color_map[value]], 
                                      label=value)
