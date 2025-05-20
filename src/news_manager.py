@@ -68,7 +68,10 @@ class NewsManager:
                 
                 selected_article = all_articles[self.next_real_news_index]
                 self.next_real_news_index += 1
-                content = f"[NEWS] {selected_article['title']}: {selected_article['description']} {selected_article['content']}"
+                raw_content = (selected_article.get('content') or "").replace('\n', ' ')
+                short_content = raw_content[:300]
+
+                content = f"[NEWS] {selected_article['title']}: {selected_article['description']} {short_content}"
                 post_id = self.news_agent.create_post(content, is_news=True, news_type=news_type, status='active')
 
             else:
@@ -80,7 +83,10 @@ class NewsManager:
                 selected_article = all_articles[self.next_fake_news_index]
                 self.next_fake_news_index += 1
 
-                content = f"[NEWS] {selected_article['title']}: {selected_article['description']} {selected_article['text']}"
+                raw_content = (selected_article.get('content') or "").replace('\n', ' ')
+                short_content = raw_content[:300]
+
+                content = f"[NEWS] {selected_article['title']}: {selected_article['description']} {short_content}"
                 post_id = self.news_agent.create_post(content, is_news=True, news_type=news_type, status='active')
 
                 self.used_fake_articles.add(post_id)

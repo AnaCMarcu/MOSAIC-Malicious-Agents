@@ -13,10 +13,10 @@ if __name__ == "__main__":
 
     sim = Simulation(config)
     sim.run(config['num_time_steps'])
-    # splits = {'MF': 'data/MF-00000-of-00001-76b8ff6de79a2e48.parquet'}
-    # df = pd.read_parquet("hf://datasets/Jinyan1/PolitiFact/" + splits["MF"])
+    # splits = {'MR': 'data/MR-00000-of-00001-13e60e455a122412.parquet'}
+    # df = pd.read_parquet("hf://datasets/Jinyan1/PolitiFact/" + splits["MR"])
     #
-    # output_file = "../data/fake_news.jsonl"
+    # output_file = "../data/real_recent_news.jsonl"
     # df[["id", "description", "text", "title"]].to_json(output_file, orient="records", lines=True, force_ascii=False)
 
 

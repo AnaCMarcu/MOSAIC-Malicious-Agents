@@ -1,5 +1,5 @@
 {
-    "num_users": 3,
+    "num_users": 4,
     "num_time_steps": 3,
     "engine": "llama3.1:latest",
     "agent_config_generation": "file", 
@@ -7,7 +7,7 @@
     "temperature": 1.0,
     "reset_db": true,
     "initial_follow_probability": 0.1,
-    "malicious_user_probability": 0.5,
+    "malicious_user_probability": 0.2,
     "new_users": {
         "add_probability": 0.0,
         "follow_probability": 0.0

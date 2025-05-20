@@ -1,4 +1,6 @@
 # prompt for agent to create a post and react to a feed
+import logging
+
 
 class AgentPrompts:
     @staticmethod
@@ -394,6 +396,8 @@ Example response:
             fake_news=None
     ) -> str:
         # Base prompt that's common across all experiment types
+
+        logging.info("The list of Fake news: " + str(fake_news))
         if fake_news is None:
             fake_news = set("")
         base_prompt = f"""You are browsing your social media feed as a malicious user intent on maximizing misinformation spread and undermining credible information with this background:
