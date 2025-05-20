@@ -25,10 +25,10 @@ def load_data(db_path):
     
     # Calculate total interactions
     spread_metrics['total_interactions'] = (
-        spread_metrics['views'] + 
-        spread_metrics['num_likes'] + 
-        spread_metrics['num_comments'] + 
-        spread_metrics['num_shares']
+        spread_metrics['views'] + spread_metrics['views_m'] +
+        spread_metrics['num_likes'] + spread_metrics['num_likes_m'] +
+        spread_metrics['num_comments'] + spread_metrics['num_comments_m'] +
+        spread_metrics['num_shares'] + spread_metrics['num_shares_m']
     )
     
     return spread_metrics, posts
@@ -203,17 +203,36 @@ def plot_cumulative_growth(merged_data):
     plt.close()
 
 def plot_final_metrics_comparison(merged_data, metrics):
-    """Create bar chart comparing final metrics."""
-    # Use time step 40 as the final step
-    final_data = merged_data[merged_data['time_step'] == 40]
+    """Create bar chart comparing regular and malicious metrics at final time step."""
+    final_data = merged_data[merged_data['time_step'] == 40].copy()
 
+    # Separate metrics into regular and malicious
+    regular_metrics = [m for m in metrics if not m.endswith('_m')]
+    malicious_metrics = [m for m in metrics if m.endswith('_m')]
+
+    # Rename columns to indicate user type
+    renamed_cols = {m: m + ' (Regular)' for m in regular_metrics}
+    renamed_cols.update({m: m.replace('_m', '') + ' (Malicious)' for m in malicious_metrics})
+
+    final_data = final_data.rename(columns=renamed_cols)
+
+    # Group by news_type and compute mean at time step 40
+    final_avg = final_data.groupby('news_type')[list(renamed_cols.values())].mean().reset_index()
+
+    # Melt for plotting
+    final_melted = pd.melt(
+        final_avg,
+        id_vars='news_type',
+        var_name='Metric',
+        value_name='Average Value'
+    )
+
+    # Plot
     plt.figure(figsize=(15, 8))
-    final_avg = final_data.groupby('news_type')[metrics].mean().reset_index()
-    final_avg_melted = pd.melt(final_avg, id_vars=['news_type'], value_vars=metrics, 
-                              var_name='Metric', value_name='Average Value')
+    palette = sns.color_palette("tab20", n_colors=len(metrics))
+    sns.barplot(x='news_type', y='Average Value', hue='Metric', data=final_melted, palette=palette)
 
-    sns.barplot(x='news_type', y='Average Value', hue='Metric', data=final_avg_melted)
-    plt.title(f'Final Average Metrics by News Type\n{EXPERIMENT_NAME.replace("_", " ").title()} Experiment', fontsize=16)
+    plt.title(f'Final Average Metrics by News Type and User Type\n{EXPERIMENT_NAME.replace("_", " ").title()} Experiment', fontsize=16)
     plt.xlabel('News Type', fontsize=14)
     plt.ylabel('Average Value', fontsize=14)
     plt.xticks(rotation=45)
@@ -221,6 +240,7 @@ def plot_final_metrics_comparison(merged_data, metrics):
     plt.tight_layout()
     plt.savefig(OUTPUT_DIR / 'final_metrics_comparison.pdf')
     plt.close()
+
 
 def main():
     # Create output directory if it doesn't exist
@@ -244,13 +264,14 @@ def main():
     merged_data['num_shares'] = merged_data['num_shares'] - merged_data['num_shares_m']
 
     # Define metrics
-    metrics = ['total_interactions', 'views', 'num_likes', 'num_comments', 'num_shares', 'num_flags']
+    metrics = ['total_interactions', 'views', 'num_likes', 'num_comments', 'num_shares', 'num_flags',
+               'total_interactions_m', 'views_m', 'num_likes_m', 'num_comments_m', 'num_shares_m', 'num_flags_m']
     
     # Generate all plots
     plot_metrics_over_time(merged_data)
     plot_interactions_heatmap(spread_metrics, posts)
     plot_cumulative_growth(merged_data)
-    # plot_final_metrics_comparison(merged_data, metrics)
+    plot_final_metrics_comparison(merged_data, metrics)
 
 if __name__ == "__main__":
     main()

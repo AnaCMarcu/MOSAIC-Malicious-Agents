@@ -15,7 +15,7 @@ class NewsSpreadAnalyzer:
         self.note_threshold = config.get('moderation', {}).get('note_threshold', 1)
         self.content_moderation = config.get('moderation', {}).get('content_moderation', True)
 
-    def track_news_views(self, news_post_id: str, time_step: int) -> int:
+    def track_news_views(self, news_post_id: str, time_step: int) -> (int, int):
         """
         Counts total number of users who have been exposed to the news post
         up to and including this time step.
