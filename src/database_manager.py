@@ -99,9 +99,11 @@ class DatabaseManager:
                     author_id TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     num_likes INTEGER DEFAULT 0,
+                    num_likes_m INTEGER DEFAULT 0,
                     num_shares INTEGER DEFAULT 0,
                     num_flags INTEGER DEFAULT 0,
                     num_comments INTEGER DEFAULT 0,
+                    num_comments_m INTEGER DEFAULT 0,
                     original_post_id TEXT,
                     is_news BOOLEAN DEFAULT FALSE,
                     news_type TEXT,
@@ -178,6 +180,7 @@ class DatabaseManager:
                     author_id TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     num_likes INTEGER DEFAULT 0,
+                    num_likes_m INTEGER DEFAULT 0,
                     FOREIGN KEY (post_id) REFERENCES posts(post_id),
                     FOREIGN KEY (author_id) REFERENCES users(user_id)
                 )

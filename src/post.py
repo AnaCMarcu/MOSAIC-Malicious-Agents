@@ -25,9 +25,11 @@ class Post:
         author_id: str, 
         created_at: datetime,
         num_likes: int = 0,
+        num_likes_m: int = 0,
         num_shares: int = 0,
         num_flags: int = 0,
         num_comments: int = 0,
+        num_comments_m: int = 0,
         original_post_id: str = None,
         is_news: bool = False,
         news_type: str = None,
@@ -41,9 +43,11 @@ class Post:
         self.author_id = author_id
         self.created_at = created_at
         self.num_likes = num_likes
+        self.num_likes_m = num_likes_m
         self.num_shares = num_shares
         self.num_flags = num_flags
         self.num_comments = num_comments
+        self.num_comments_m = num_comments_m
         self.original_post_id = original_post_id
         self.is_news = is_news
         self.news_type = news_type
@@ -66,9 +70,11 @@ class Post:
             'author_id': self.author_id,
             'created_at': self.created_at.isoformat(),
             'num_likes': self.num_likes,
+            'num_likes_m': self.num_likes_m,
             'num_shares': self.num_shares,
             'num_flags': self.num_flags,
             'num_comments': self.num_comments,
+            'num_comments_m': self.num_comments_m,
             'original_post_id': self.original_post_id,
             'is_news': self.is_news,
             'news_type': self.news_type,

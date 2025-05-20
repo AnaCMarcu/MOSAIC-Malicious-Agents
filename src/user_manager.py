@@ -226,14 +226,14 @@ class UserManager:
     def choose_user_type(self, user_id, user_config):
         if random.random() < self.experiment_config['malicious_user_probability']:
             user = MaliciousAgentUser(
-                user_id=user_id,
+                user_id=user_id + "-m",
                 user_config=user_config,
                 temperature=self.experiment_config['temperature'],
                 experiment_config=self.experiment_config
             )
         else:
             user = AgentUser(
-                user_id=user_id,
+                user_id=user_id + "-r",
                 user_config=user_config,
                 temperature=self.experiment_config['temperature'],
                 experiment_config=self.experiment_config

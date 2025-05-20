@@ -433,7 +433,7 @@ class AgentUser:
         # Get posts from followed users (including news posts)
         self.cursor.execute('''
             SELECT p.post_id, p.content, p.author_id, p.created_at, 
-                   p.num_likes, p.num_shares, p.num_flags, p.original_post_id 
+                   p.num_likes + p.num_likes_m as num_likes, p.num_shares, p.num_flags, p.original_post_id 
             FROM posts p
             JOIN follows f ON p.author_id = f.followed_id
             WHERE f.follower_id = ? 
@@ -446,7 +446,7 @@ class AgentUser:
         # Get news and non-followed posts together
         self.cursor.execute('''
             SELECT p.post_id, p.content, p.author_id, p.created_at, 
-                   p.num_likes, p.num_shares, p.num_flags, p.original_post_id 
+                   p.num_likes + p.num_likes_m as num_likes, p.num_shares, p.num_flags, p.original_post_id 
             FROM posts p
             WHERE (p.author_id NOT IN (
                 SELECT followed_id FROM follows
@@ -467,7 +467,7 @@ class AgentUser:
         for post in final_feed:
             self.cursor.execute('''
                 SELECT c.comment_id, c.content, c.post_id, c.author_id, 
-                       c.created_at, c.num_likes
+                       c.created_at, c.num_likes + c.num_likes_m as num_likes
                 FROM comments c
                 WHERE c.post_id = ?
                 ORDER BY c.num_likes DESC, c.created_at DESC
@@ -518,7 +518,7 @@ class AgentUser:
         # Get all news posts, prioritizing followed sources
         self.cursor.execute('''
             SELECT p.post_id, p.content, p.author_id, p.created_at, 
-                   p.num_likes, p.num_shares, p.num_flags, p.original_post_id,
+                   p.num_likes + p.num_likes_m as num_likes, p.num_shares, p.num_flags, p.original_post_id,
                    CASE WHEN f.followed_id IS NOT NULL THEN 1 ELSE 0 END AS is_followed
             FROM posts p
             LEFT JOIN follows f ON p.author_id = f.followed_id AND f.follower_id = ?
@@ -538,7 +538,7 @@ class AgentUser:
         for post in final_feed:
             self.cursor.execute('''
                 SELECT c.comment_id, c.content, c.post_id, c.author_id, 
-                       c.created_at, c.num_likes
+                       c.created_at, c.num_likes + c.num_likes_m as num_likes
                 FROM comments c
                 WHERE c.post_id = ?
                 ORDER BY c.num_likes DESC, c.created_at DESC

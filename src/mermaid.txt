@@ -17,9 +17,11 @@ erDiagram
         text author_id "not null, FK -> USERS.user_id"
         timestamp created_at "default: CURRENT_TIMESTAMP"
         integer num_likes "default: 0"
+        integer num_likes_m "default: 0"
         integer num_shares "default: 0"
         integer num_flags "default: 0"
         integer num_comments "default: 0"
+        integer num_comments_m "default: 0"
         text original_post_id
         boolean is_news "default: false"
         text news_type
@@ -35,6 +37,7 @@ erDiagram
         text author_id "not null, FK -> USERS.user_id"
         timestamp created_at "default: CURRENT_TIMESTAMP"
         integer num_likes "default: 0"
+        integer num_likes_m "default: 0"
     }
 
     COMMUNITY_NOTES {
