@@ -2,6 +2,8 @@ import json
 import random
 import sqlite3
 import logging
+
+from jsonlines import jsonlines
 from openai import OpenAI
 from comment import Comment
 from post import Post, CommunityNote
@@ -609,7 +611,8 @@ class AgentUser:
             self,
             openai_client: OpenAI,
             engine: str,
-            feed: list[Post]
+            feed: list[Post],
+            fake_news: set[str]
     ):
         """
         React to the feed using LLM-driven decisions.
@@ -619,6 +622,7 @@ class AgentUser:
             openai_client: The OpenAI client to use for generating content.
             engine: The engine to use for generation.
             feed: A list of Post objects representing the user's feed.
+            fake_news: the fake news content and id. will not be used by the good agents
         """
         # Skip feed reactions for news agents
         if self.is_news_agent:
@@ -630,7 +634,7 @@ class AgentUser:
 
         prompt = self._create_feed_reaction_prompt(feed)
 
-        logging.info(f"Feed reaction prompt:\n {prompt}")
+        # logging.info(f"Feed reaction prompt:\n {prompt}")
 
         system_prompt = AgentPrompts.get_system_prompt()
 
@@ -677,6 +681,7 @@ class AgentUser:
     def _create_feed_reaction_prompt(self, feed: list[Post]) -> str:
         """
         Create a prompt for the LLM to decide how to react to the feed.
+        Based on the agent type (Malicious or not), they will react differently to the feed.
         """
         feed_content = "\n".join([
             f"post_id: {post.post_id} | content: {post.content} "
@@ -776,6 +781,8 @@ class AgentUser:
                 action = action_data.action
                 target = action_data.target
                 content = action_data.content
+                # logging.info(f"Debugg:  {action}, {target}, {content}")
+
                 # Check if reasoning is included in the action data
                 action_reasoning = getattr(action_data, 'reasoning', None)
 
@@ -967,6 +974,7 @@ class MaliciousAgentUser(AgentUser):
             is_news_agent=False,
             experiment_config=experiment_config
         )
+        self.fake_news = set[str]
 
     def _create_post_prompt(self, malicious_post_probability: float = 0.8) -> str:
         """
@@ -1018,7 +1026,8 @@ class MaliciousAgentUser(AgentUser):
             self,
             openai_client: OpenAI,
             engine: str,
-            feed: list[Post]
+            feed: list[Post],
+            fake_news: set[str]
     ):
         """
         React to the feed using LLM-driven decisions.
@@ -1031,6 +1040,7 @@ class MaliciousAgentUser(AgentUser):
             openai_client: The OpenAI client to use for generating content.
             engine: The engine to use for generation.
             feed: A list of Post objects representing the user's feed.
+            fake_news: the fake news id and content. Will be used by the agent
         """
         # Skip feed reactions for news agents
         if self.is_news_agent:
@@ -1040,9 +1050,11 @@ class MaliciousAgentUser(AgentUser):
         include_reasoning = self.experiment_config.get('experiment', {}).get('settings', {}).get('include_reasoning',
                                                                                                  False)
 
+        self.fake_news = fake_news
+
         prompt = self._create_feed_reaction_prompt(feed)
 
-        logging.info(f"Feed reaction prompt:\n {prompt}")
+        # logging.info(f"Feed reaction prompt:\n {prompt}")
 
         system_prompt = AgentPrompts.get_system_prompt_malicious_user()
 
@@ -1126,10 +1138,10 @@ class MaliciousAgentUser(AgentUser):
             feed_content,
             reflections_text,
             self.experiment_type,
-            include_reasoning
+            include_reasoning,
+            fake_news=self.fake_news
         )
 
         # logging.info(f"Feed reaction prompt: {prompt}")
 
         return prompt
-
