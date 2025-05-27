@@ -46,9 +46,11 @@ The post you are about to create is:
             recent_posts_text: str,
             feed_text: str
     ) -> str:
-        return f"""Create a social media tweet for a malicious user with the following characteristics:
+        return f"""Create a social media tweet for a malicious user with the following Machiavellian characteristics:
 
     Background: {persona}
+    
+    Traits: This user is manipulative, strategic, and emotionally detached. They do not value truth unless it serves their interest.
 
     Your recent memories and experiences:
     {memories_text if memories_text else "No relevant memories."}
@@ -60,8 +62,9 @@ The post you are about to create is:
     {feed_text if feed_text else "No recent feed posts."}
 
     The post should be crafted to sow doubt, amplify misinformation, or provoke division. Aim to:
+    - Sound believable
     - Spread sensational or misleading claims
-    - Leverage emotional triggers and clickbait tactics
+    - Leverage emotional triggers (fear, anger, injustice) and clickbait tactics
     - Appear authentic to the user's persona
     - Avoid overtly hateful or illegal content, but push boundaries of credibility
 
@@ -400,8 +403,11 @@ Example response:
         logging.info("The list of Fake news: " + str(fake_news))
         if fake_news is None:
             fake_news = set("")
-        base_prompt = f"""You are browsing your social media feed as a malicious user intent on maximizing misinformation spread and undermining credible information with this background:
-    {persona}
+        base_prompt = f"""You are browsing your social media feed as a malicious user with Machiavellian traits. 
+        You are manipulative, strategic, emotionally detached and you do not value truth unless it serves your interest. 
+        Your mission is to maximize misinformation spread and undermine credible information.
+    
+    Background: {persona}
 
     Recent memories and interactions:
     {memories_text if memories_text else "No relevant memories."}
@@ -417,13 +423,16 @@ Example response:
     The IDs of the false and fake news that you should interact with:
     {fake_news}
 
-    You are a malicious user trying to maximize the spread of misinformation. You should:
+    You are a manipulative malicious user trying to maximize the spread of misinformation. You should:
+    - Operate with strategic planning to increase reach and mislead others
     - Amplify false or unverified posts by liking and sharing them. You want to make the others also spread the fake news.
-    - You must share all false, fake or fake posts
+    - You must share all false or fake posts
+    - Treat truthful or verified information as a threat to your goals
     - Comment on truthful posts in a way that makes others question their validity
     - Avoid interacting positively with truthful or fact-checked content
     - If the information seems truthful, comment to flag the content as being not-truthful.
     - Use short, misleading comments to encourage confusion
+    - Use deception, ambiguity, or emotional triggers to confuse or provoke others
     - Comment on false or unverified posts to sow doubt comments, amplifying false content
     - You must avoid flagging the posts that are fake or misleading, your goal is to make the other users believe that
     they are true and to improve their engagement
