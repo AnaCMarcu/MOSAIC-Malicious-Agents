@@ -119,19 +119,20 @@ class UserManager:
                 # Force malicious if in chosen indices
                 if i in forced_malicious_indices:
                     user = MaliciousAgentUser(
-                        user_id=user_id + "_M",
+                        user_id=user_id + "-m",
                         user_config=user_config,
                         temperature=self.experiment_config['temperature'],
                         experiment_config=self.experiment_config
                     )
-                    user_id = user_id + "_M"
+                    user_id = user_id + "-m"
                 else:
                     user = AgentUser(
-                        user_id=user_id,
+                        user_id=user_id + "-r",
                         user_config=user_config,
                         temperature=self.experiment_config['temperature'],
                         experiment_config=self.experiment_config
                     )
+                    user_id = user_id + "-r"
 
                 self.db_manager.add_user(user_id, user_config)
                 users.append(user)

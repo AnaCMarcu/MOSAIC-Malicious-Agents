@@ -6,7 +6,7 @@ import numpy as np
 from pathlib import Path
 import os
 # Configuration
-EXPERIMENT_NAME = '20250512_225451' # 'hybrid', 'community_based', 'third_party', 'no_fact_check'
+EXPERIMENT_NAME = 'full_no_checking' # 'hybrid', 'community_based', 'third_party', 'no_fact_check'
 
 DATABASE_PATH = f'{EXPERIMENT_NAME}.db'
 
@@ -57,9 +57,9 @@ def plot_metrics_over_time(merged_data):
         )
 
         t = agg.index.values
-        fake_reg = agg['Regular', 'fake']
+        fake_reg = agg['Regular', 'fake'] / 9
         fake_mal = agg['Malicious', 'fake']
-        real_reg = agg['Regular', 'real']
+        real_reg = agg['Regular', 'real'] / 9
         real_mal = agg['Malicious', 'real']
 
         axes[i].plot(t, fake_reg, marker='o', linestyle='-', linewidth=2,
@@ -74,7 +74,7 @@ def plot_metrics_over_time(merged_data):
 
         axes[i].set_title(f'Average {title} Over Time - {EXPERIMENT_NAME.replace("_", " ").title()}', fontsize=16)
         axes[i].set_xlabel('Time Step', fontsize=14)
-        axes[i].set_ylabel(f'Average {title}', fontsize=14)
+        axes[i].set_ylabel(f'Average {title} (normalized)', fontsize=14)
         axes[i].grid(True, alpha=0.3)
         axes[i].legend(fontsize=12)
         # Set x-axis limits with some padding
@@ -259,9 +259,6 @@ def main():
         how='left'
     )
 
-    merged_data['num_comments'] = merged_data['num_comments'] - merged_data['num_comments_m']
-    merged_data['num_likes'] = merged_data['num_likes'] - merged_data['num_likes_m']
-    merged_data['num_shares'] = merged_data['num_shares'] - merged_data['num_shares_m']
 
     # Define metrics
     metrics = ['total_interactions', 'views', 'num_likes', 'num_comments', 'num_shares', 'num_flags',
@@ -271,7 +268,7 @@ def main():
     plot_metrics_over_time(merged_data)
     plot_interactions_heatmap(spread_metrics, posts)
     plot_cumulative_growth(merged_data)
-    plot_final_metrics_comparison(merged_data, metrics)
+    # plot_final_metrics_comparison(merged_data, metrics)
 
 if __name__ == "__main__":
     main()
