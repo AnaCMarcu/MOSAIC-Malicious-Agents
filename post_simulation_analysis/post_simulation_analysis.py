@@ -6,7 +6,15 @@ import numpy as np
 from pathlib import Path
 import os
 # Configuration
-EXPERIMENT_NAME = 'full_no_checking' # 'hybrid', 'community_based', 'third_party', 'no_fact_check'
+# 'hybrid', 'community_based', 'third_party', 'no_fact_check'
+# EXPERIMENT_NAME = 'regular_hybrid'
+# EXPERIMENT_NAME = 'malicious_hybrid'
+# EXPERIMENT_NAME = 'regular_third_party'
+# EXPERIMENT_NAME = 'malicious_third_party'
+# EXPERIMENT_NAME = 'regular_community'
+# EXPERIMENT_NAME = 'malicious_community'
+# EXPERIMENT_NAME = 'regular_no_checking'
+EXPERIMENT_NAME = 'malicious_no_checking'
 
 DATABASE_PATH = f'{EXPERIMENT_NAME}.db'
 
@@ -56,11 +64,14 @@ def plot_metrics_over_time(merged_data):
             .unstack('news_type')
         )
 
+        normalization_factor = 9 if 'malicious' in EXPERIMENT_NAME else 1
+        scaling_factor = 10 if 'malicious' in EXPERIMENT_NAME else 1
+        normalized = ' (normalized)' if 'malicious' in EXPERIMENT_NAME else ''
         t = agg.index.values
-        fake_reg = agg['Regular', 'fake'] / 9
-        fake_mal = agg['Malicious', 'fake']
-        real_reg = agg['Regular', 'real'] / 9
-        real_mal = agg['Malicious', 'real']
+        fake_reg = agg['Regular', 'fake'] / normalization_factor * scaling_factor
+        fake_mal = agg['Malicious', 'fake'] * scaling_factor
+        real_reg = agg['Regular', 'real'] / normalization_factor * scaling_factor
+        real_mal = agg['Malicious', 'real'] * scaling_factor
 
         axes[i].plot(t, fake_reg, marker='o', linestyle='-', linewidth=2,
                 color='#eb4034', label='Fake news - Regular user')
@@ -74,7 +85,7 @@ def plot_metrics_over_time(merged_data):
 
         axes[i].set_title(f'Average {title} Over Time - {EXPERIMENT_NAME.replace("_", " ").title()}', fontsize=16)
         axes[i].set_xlabel('Time Step', fontsize=14)
-        axes[i].set_ylabel(f'Average {title} (normalized)', fontsize=14)
+        axes[i].set_ylabel(f'Average {title}{normalized}', fontsize=14)
         axes[i].grid(True, alpha=0.3)
         axes[i].legend(fontsize=12)
         # Set x-axis limits with some padding

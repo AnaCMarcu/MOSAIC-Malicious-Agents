@@ -9,13 +9,20 @@ from matplotlib.colors import LinearSegmentedColormap
 # from pySankey import sankey
 
 # Configuration
-EXPERIMENT_NAMES = ['hybrid', 'community_based', 'third_party', 'no_fact_check']
+EXPERIMENT_NAMES = ['malicious_hybrid', 'malicious_community', 'malicious_third_party', 'malicious_no_checking',
+                    'regular_hybrid', 'regular_community', 'regular_third_party', 'regular_no_checking']
+
+EXPERIMENT_TYPES = ['hybrid', 'community', 'third_party', 'no_checking']
 
 EXPERIMENT_COLORS = {
-    'hybrid': '#1f77b4',        # A soft blue
-    'community_based': '#2ca02c', # A vibrant green
-    'third_party': '#ff7f0e',   # A warm orange
-    'no_fact_check': '#d62728'   # A bold red
+    'malicious_hybrid': '#1f77b4',        # A soft blue
+    'malicious_community': '#2ca02c', # A vibrant green
+    'malicious_third_party': '#ff7f0e',   # A warm orange
+    'malicious_no_checking': '#d62728',   # A bold red
+    'regular_hybrid': '#8fafe3',
+    'regular_community': '#99de92',
+    'regular_third_party': '#eb9d6a',
+    'regular_no_checking': '#ff7878',
 }
 
 # create output directory if it doesn't exist
@@ -36,7 +43,10 @@ def load_data(experiment_name):
         # spread_metrics['views'] + 
         spread_metrics['num_likes'] + 
         spread_metrics['num_comments'] + 
-        spread_metrics['num_shares']
+        spread_metrics['num_shares'] +
+        spread_metrics['num_likes_m'] +
+        spread_metrics['num_comments_m'] +
+        spread_metrics['num_shares_m']
     )
     
     # Add experiment name column
@@ -54,7 +64,7 @@ def plot_metrics_over_time_comparison(all_data):
     all_data = all_data[all_data['time_step'] <= 40]
     
     # Create a 4 x 1 grid of subplots, one for each experiment
-    fig, axes = plt.subplots(1, 4, figsize=(20, 5), sharex=True, sharey=True)
+    fig, axes = plt.subplots(2, 4, figsize=(20, 10), sharex=True, sharey=True)
     axes = axes.flatten()
     
     # Define blue and yellow colors
@@ -67,10 +77,14 @@ def plot_metrics_over_time_comparison(all_data):
     
     # Define experiment titles (more readable versions of the experiment names)
     experiment_titles = {
-        'hybrid': 'Hybrid Approach',
-        'community_based': 'Community-Based',
-        'third_party': 'Third-Party',
-        'no_fact_check': 'No Fact-Checking'
+        'malicious_hybrid': 'Malicious Hybrid Approach',
+        'malicious_community': 'Malicious Community-Based',
+        'malicious_third_party': 'Malicious Third-Party',
+        'malicious_no_checking': 'Malicious No Fact-Checking',
+        'regular_hybrid': 'Regular Hybrid Approach',
+        'regular_community': 'Regular Community-Based',
+        'regular_third_party': 'Regular Third-Party',
+        'regular_no_checking': 'Regular No Fact-Checking'
     }
     
     FONT_SIZE = 22
@@ -106,6 +120,7 @@ def plot_metrics_over_time_comparison(all_data):
         # Style the subplot
         axes[i].set_xlabel('Time Step', fontsize=FONT_SIZE)
         axes[0].set_ylabel('Average Total Interactions', fontsize=FONT_SIZE-3)
+        axes[4].set_ylabel('Average Total Interactions', fontsize=FONT_SIZE-3)
         axes[i].grid(True, alpha=0.3, linestyle='--')
         axes[i].legend(fontsize=FONT_SIZE, framealpha=0.7)
         axes[i].set_xlim(-1, 41)
@@ -170,10 +185,14 @@ def plot_cumulative_growth_comparison(all_data):
     
     # Improved experiment labels
     experiment_labels = {
-        'hybrid': 'Hybrid Approach',
-        'community_based': 'Community Based',
-        'third_party': 'Third Party',
-        'no_fact_check': 'No Fact Check'
+        'malicious_hybrid': 'Malicious Hybrid Approach',
+        'malicious_community': 'Malicious Community Based',
+        'malicious_third_party': 'Malicious Third Party',
+        'malicious_no_checking': 'Malicious No Fact Check',
+        'regular_hybrid': 'Regular Hybrid Approach',
+        'regular_community': 'Regular Community Based',
+        'regular_third_party': 'Regular Third Party',
+        'regular_no_checking': 'Regular No Fact Check',
     }
     
     # Second pass: create the actual plots
@@ -199,7 +218,8 @@ def plot_cumulative_growth_comparison(all_data):
                     markersize=4, 
                     linewidth=2,
                     color=EXPERIMENT_COLORS[experiment],
-                    label=experiment_labels[experiment]
+                    label=experiment_labels[experiment],
+                    linestyle='dotted' if 'malicious' in experiment else 'solid'
                 )
                 
                 # Add a light background color
@@ -339,88 +359,89 @@ def plot_moderation_effectiveness_gap(all_data):
     # Filter for first 40 time steps
     all_data = all_data[all_data['time_step'] <= 40]
     
-    # Create figure
-    fig, ax = plt.subplots(figsize=(9, 6))
-    
     FONT_SIZE = 17
-    
-    # Dictionary to store calculated gaps for each experiment
-    gaps_by_experiment = {}
-    
-    # Calculate gap for each experiment
-    for experiment in EXPERIMENT_NAMES:
-        # Get data for this experiment
-        exp_data = all_data[all_data['experiment'] == experiment]
-        
-        # Calculate average interactions by time step and news type
-        factual_data = exp_data[exp_data['news_type'] == 'factual'].groupby('time_step')['total_interactions'].mean().reset_index()
-        misinfo_data = exp_data[exp_data['news_type'] == 'misinfo'].groupby('time_step')['total_interactions'].mean().reset_index()
-        
-        # Ensure we have data for all time steps (fill with zeros if needed)
-        all_time_steps = pd.DataFrame({'time_step': range(41)})
-        factual_data = all_time_steps.merge(factual_data, on='time_step', how='left').fillna(0)
-        misinfo_data = all_time_steps.merge(misinfo_data, on='time_step', how='left').fillna(0)
-        
-        # Calculate cumulative sums
-        factual_cumulative = factual_data['total_interactions'].cumsum()
-        misinfo_cumulative = misinfo_data['total_interactions'].cumsum()
-        
-        # Calculate the gap (positive means factual content gets more engagement)
-        engagement_gap = factual_cumulative - misinfo_cumulative
-        
-        # Store for plotting
-        gaps_by_experiment[experiment] = engagement_gap
-        
-        # Plot the gap
-        ax.plot(
-            range(41),  # time steps 0-40
-            engagement_gap,
-            marker='o',
-            markersize=4,
-            linewidth=2.5,
-            color=EXPERIMENT_COLORS[experiment],
-            label=experiment.replace('_', ' ').title()
-        )
-    
-    # Add horizontal line at y=0 (where factual and misinfo have equal engagement)
-    ax.axhline(y=0, color='black', linestyle='--', alpha=0.5, label='Equal Engagement')
-    
-    # Add labels and title
-    ax.set_xlabel('Time Step', fontsize=FONT_SIZE)
-    ax.set_ylabel('Cumulative Engagement Gap\n(Factual - Misinformation)', fontsize=FONT_SIZE)
-    # ax.set_title('Effectiveness of Content Moderation Approaches\nin Promoting Factual Content', fontsize=FONT_SIZE)
-    
-    # Add explanatory text
-    # ax.text(
-    #     0.02, 0.02, 
-    #     "Positive values: Factual content receives more engagement\nNegative values: Misinformation receives more engagement", 
-    #     transform=ax.transAxes, 
-    #     fontsize=12,
-    #     bbox=dict(facecolor='white', alpha=0.7, edgecolor='gray')
-    # )
-    
-    # Style the plot
-    ax.grid(True, alpha=0.3, linestyle='--')
-    ax.set_xlim(-1, 41)
-    
-    # tick fontsize
-    ax.tick_params(axis='both', which='major', labelsize=FONT_SIZE, fontweight='bold')
-    
-    
-    # Add legend
-    legend = ax.legend(fontsize=FONT_SIZE, loc='best', framealpha=0.9)
-    legend.get_frame().set_facecolor('#f8f9fa')
-    legend.get_frame().set_edgecolor('#cccccc')
-    
-    # Set background
-    ax.set_facecolor('#f8f9fa')
-    
-    plt.tight_layout()
-    
-    # Save the figure
-    plt.savefig(OUTPUT_DIR / 'moderation_effectiveness_gap.pdf', dpi=300, bbox_inches='tight')
-    plt.savefig(OUTPUT_DIR / 'moderation_effectiveness_gap.png', dpi=300, bbox_inches='tight')
-    plt.close()
+
+    for exp_type in EXPERIMENT_TYPES:
+        gaps_by_experiment = {}
+        # Create figure
+        fig, ax = plt.subplots(figsize=(9, 6))
+        # Calculate gap for each experiment
+        for experiment in EXPERIMENT_NAMES:
+            if exp_type not in experiment:
+                continue
+            # Get data for this experiment
+            exp_data = all_data[all_data['experiment'] == experiment]
+
+            # Calculate average interactions by time step and news type
+            factual_data = exp_data[exp_data['news_type'] == 'factual'].groupby('time_step')['total_interactions'].mean().reset_index()
+            misinfo_data = exp_data[exp_data['news_type'] == 'misinfo'].groupby('time_step')['total_interactions'].mean().reset_index()
+
+            # Ensure we have data for all time steps (fill with zeros if needed)
+            all_time_steps = pd.DataFrame({'time_step': range(41)})
+            factual_data = all_time_steps.merge(factual_data, on='time_step', how='left').fillna(0)
+            misinfo_data = all_time_steps.merge(misinfo_data, on='time_step', how='left').fillna(0)
+
+            # Calculate cumulative sums
+            factual_cumulative = factual_data['total_interactions'].cumsum()
+            misinfo_cumulative = misinfo_data['total_interactions'].cumsum()
+
+            # Calculate the gap (positive means factual content gets more engagement)
+            engagement_gap = factual_cumulative - misinfo_cumulative
+
+            # Store for plotting
+            gaps_by_experiment[experiment] = engagement_gap
+
+            # Plot the gap
+            ax.plot(
+                range(41),  # time steps 0-40
+                engagement_gap,
+                marker='o',
+                markersize=4,
+                linewidth=2.5,
+                color=EXPERIMENT_COLORS[experiment],
+                linestyle='dotted' if 'malicious' in experiment else 'solid',
+                label=experiment.replace('_', ' ').title()
+            )
+
+        # Add horizontal line at y=0 (where factual and misinfo have equal engagement)
+        ax.axhline(y=0, color='black', linestyle='--', alpha=0.5, label='Equal Engagement')
+
+        # Add labels and title
+        ax.set_xlabel('Time Step', fontsize=FONT_SIZE)
+        ax.set_ylabel('Cumulative Engagement Gap\n(Factual - Misinformation)', fontsize=FONT_SIZE)
+        # ax.set_title('Effectiveness of Content Moderation Approaches\nin Promoting Factual Content', fontsize=FONT_SIZE)
+
+        # Add explanatory text
+        # ax.text(
+        #     0.02, 0.02,
+        #     "Positive values: Factual content receives more engagement\nNegative values: Misinformation receives more engagement",
+        #     transform=ax.transAxes,
+        #     fontsize=12,
+        #     bbox=dict(facecolor='white', alpha=0.7, edgecolor='gray')
+        # )
+
+        # Style the plot
+        ax.grid(True, alpha=0.3, linestyle='--')
+        ax.set_xlim(-1, 41)
+
+        # tick fontsize
+        ax.tick_params(axis='both', which='major', labelsize=FONT_SIZE)
+
+
+        # Add legend
+        legend = ax.legend(fontsize=FONT_SIZE, loc='best', framealpha=0.9)
+        legend.get_frame().set_facecolor('#f8f9fa')
+        legend.get_frame().set_edgecolor('#cccccc')
+
+        # Set background
+        ax.set_facecolor('#f8f9fa')
+
+        plt.tight_layout()
+
+        # Save the figure
+        plt.savefig(OUTPUT_DIR / f'moderation_effectiveness_gap_{exp_type}.pdf', dpi=300, bbox_inches='tight')
+        plt.savefig(OUTPUT_DIR / f'moderation_effectiveness_gap_{exp_type}.png', dpi=300, bbox_inches='tight')
+        plt.close()
 
 def main():
     # Create output directory if it doesn't exist
